@@ -7,18 +7,12 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"
-    networks:
-      - diario-net
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared-diario
     restart: unless-stopped
+    network_mode: host
     command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
-    networks:
-      - diario-net
     depends_on:
       - diario
-
-networks:
-  diario-net:
