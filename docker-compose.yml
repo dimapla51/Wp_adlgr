@@ -1,6 +1,7 @@
 services:
   diario:
     build: .
+    pull_policy: build
     image: diario-del-dia:latest
     container_name: diario-del-dia
     restart: unless-stopped
