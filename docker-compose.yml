@@ -1,0 +1,9 @@
+services:
+  diario:
+    image: nginx:alpine
+    container_name: diario-del-dia
+    restart: unless-stopped
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "8080:80"
