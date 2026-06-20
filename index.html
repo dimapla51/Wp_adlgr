@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Diario del Día</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f14;
+      --surface:  #1a1a24;
+      --card:     #22222f;
+      --border:   #2e2e40;
+      --accent:   #a78bfa;
+      --accent2:  #f472b6;
+      --text:     #e2e2f0;
+      --muted:    #888899;
+      --radius:   16px;
+      --shadow:   0 8px 32px rgba(0,0,0,.45);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+      padding: 36px 24px 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 60% 40%, rgba(167,139,250,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -.5px;
+      background: linear-gradient(135deg, #c4b5fd, #f9a8d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #today-label {
+      margin-top: 8px;
+      font-size: .95rem;
+      color: #c4b5fd;
+      opacity: .8;
+      text-transform: capitalize;
+    }
+
+    /* ── Nav tabs ── */
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px 16px 0;
+    }
+    .tab-btn {
+      padding: 9px 22px;
+      border: 1.5px solid var(--border);
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: .9rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tab-btn.active, .tab-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Today Section ── */
+    #today-section {
+      max-width: 680px;
+      margin: 28px auto 0;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card h2 .icon { font-size: 1.2rem; }
+
+    /* Mood textarea */
+    #mood-input {
+      width: 100%;
+      min-height: 110px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 1rem;
+      line-height: 1.6;
+      padding: 14px;
+      resize: vertical;
+      transition: border-color .2s;
+      font-family: inherit;
+    }
+    #mood-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    #mood-input::placeholder { color: var(--muted); }
+
+    /* Emoji mood selector */
+    .mood-emojis {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .emoji-btn {
+      font-size: 1.6rem;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      width: 52px;
+      height: 52px;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .emoji-btn:hover { transform: scale(1.15); border-color: var(--accent); }
+    .emoji-btn.selected { border-color: var(--accent2); background: rgba(244,114,182,.15); transform: scale(1.12); }
+
+    /* Photo upload */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: var(--surface);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(167,139,250,.08);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .upload-zone p { color: var(--muted); font-size: .9rem; }
+    .upload-zone span { color: var(--accent); font-weight: 600; }
+
+    /* Photo grid */
+    #photos-preview {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .photo-thumb {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: var(--surface);
+    }
+    .photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-thumb .remove-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(0,0,0,.7);
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      color: #fff;
+      font-size: .8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .photo-thumb:hover .remove-btn { opacity: 1; }
+
+    /* Caption input */
+    .photo-thumb .caption-input {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,.75);
+      border: none;
+      color: #fff;
+      font-size: .7rem;
+      padding: 4px 7px;
+      font-family: inherit;
+      width: 100%;
+    }
+    .photo-thumb .caption-input:focus { outline: 1px solid var(--accent); }
+
+    /* Save button */
+    #save-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      letter-spacing: .3px;
+    }
+    #save-btn:hover { opacity: .9; }
+    #save-btn:active { transform: scale(.98); }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e1b4b;
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 99px;
+      font-size: .9rem;
+      transition: transform .3s ease;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── History Section ── */
+    #history-section {
+      max-width: 900px;
+      margin: 28px auto 0;
+      padding: 0 16px;
+    }
+
+    .history-empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 60px 20px;
+      font-size: 1rem;
+    }
+    .history-empty .big-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* History entry card */
+    .entry-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+    .entry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .entry-date {
+      font-size: .85rem;
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .entry-emoji { font-size: 1.5rem; }
+    .entry-delete {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: .8rem;
+      transition: all .2s;
+    }
+    .entry-delete:hover { border-color: #f87171; color: #f87171; }
+
+    .entry-mood {
+      padding: 16px 20px;
+      font-size: .97rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      border-bottom: 1px solid var(--border);
+    }
+    .entry-mood:empty { display: none; }
+
+    .entry-photos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 2px;
+    }
+    .entry-photo-wrap {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .entry-photo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .3s;
+    }
+    .entry-photo-wrap:hover img { transform: scale(1.05); }
+    .entry-photo-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,.72);
+      color: #fff;
+      font-size: .72rem;
+      padding: 5px 8px;
+    }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.92);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 92vw;
+      max-height: 82vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+    #lightbox-caption {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    #lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: 2px solid var(--muted);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      color: var(--text);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color .2s;
+    }
+    #lightbox-close:hover { border-color: var(--accent2); }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 8px 18px;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .stat-pill strong { color: var(--accent); }
+
+    /* ── Search bar ── */
+    #search-input {
+      width: 100%;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 99px;
+      color: var(--text);
+      font-size: .95rem;
+      padding: 11px 20px;
+      margin-bottom: 20px;
+      font-family: inherit;
+      transition: border-color .2s;
+    }
+    #search-input:focus { outline: none; border-color: var(--accent); }
+    #search-input::placeholder { color: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .emoji-btn { width: 44px; height: 44px; font-size: 1.3rem; }
+      .entry-photos { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>✨ Mi Diario del Día</h1>
+  <p id="today-label"></p>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="today">Hoy</button>
+  <button class="tab-btn" data-tab="history">Mis días</button>
+</nav>
+
+<!-- ══ TODAY ══ -->
+<div id="today-section" class="section active">
+
+  <div class="card">
+    <h2><span class="icon">💭</span> ¿Cómo estoy hoy?</h2>
+    <textarea id="mood-input" placeholder="Escribe aquí cómo te sientes, qué has vivido, qué piensas hoy..."></textarea>
+    <div class="mood-emojis">
+      <button class="emoji-btn" data-emoji="😄" title="Genial">😄</button>
+      <button class="emoji-btn" data-emoji="😊" title="Bien">😊</button>
+      <button class="emoji-btn" data-emoji="😐" title="Normal">😐</button>
+      <button class="emoji-btn" data-emoji="😔" title="Triste">😔</button>
+      <button class="emoji-btn" data-emoji="😤" title="Frustrado">😤</button>
+      <button class="emoji-btn" data-emoji="😴" title="Cansado">😴</button>
+      <button class="emoji-btn" data-emoji="🤔" title="Pensativo">🤔</button>
+      <button class="emoji-btn" data-emoji="🥰" title="Feliz">🥰</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="icon">📸</span> Fotos que me llaman la atención</h2>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="photo-input" accept="image/*" multiple />
+      <div class="upload-icon">🖼️</div>
+      <p><span>Elige fotos</span> o arrastra aquí</p>
+      <p style="margin-top:6px;font-size:.8rem;">JPG, PNG, WEBP · múltiples archivos</p>
+    </div>
+    <div id="photos-preview"></div>
+  </div>
+
+  <div class="card" style="padding:0;border:none;background:none;box-shadow:none;">
+    <button id="save-btn">Guardar entrada de hoy 💾</button>
+  </div>
+
+</div>
+
+<!-- ══ HISTORY ══ -->
+<div id="history-section" class="section">
+  <input type="text" id="search-input" placeholder="🔍  Buscar en mis entradas..." />
+  <div class="stats-strip" id="stats-strip"></div>
+  <div id="history-list"></div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="lightbox-close">✕</button>
+  <img id="lightbox-img" src="" alt="" />
+  <div id="lightbox-caption"></div>
+</div>
+
+<div id="toast">✅ Entrada guardada</div>
+
+<script>
+  /* ── Helpers ── */
+  const $ = id => document.getElementById(id);
+  const todayKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  function formatDate(isoKey) {
+    const [y, m, d] = isoKey.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('es-ES', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+  }
+
+  function getEntries() {
+    try { return JSON.parse(localStorage.getItem('diary_entries') || '{}'); }
+    catch { return {}; }
+  }
+  function saveEntries(entries) {
+    localStorage.setItem('diary_entries', JSON.stringify(entries));
+  }
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ── Header date ── */
+  $('today-label').textContent = formatDate(todayKey());
+
+  /* ── Tabs ── */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      $(`${btn.dataset.tab}-section`).classList.add('active');
+      if (btn.dataset.tab === 'history') renderHistory();
+    });
+  });
+
+  /* ── Emoji selector ── */
+  let selectedEmoji = '';
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (selectedEmoji === btn.dataset.emoji) {
+        selectedEmoji = '';
+        btn.classList.remove('selected');
+      } else {
+        document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+        selectedEmoji = btn.dataset.emoji;
+        btn.classList.add('selected');
+      }
+    });
+  });
+
+  /* ── Photo upload ── */
+  let pendingPhotos = []; // [{dataUrl, caption}]
+
+  function fileToDataUrl(file) {
+    return new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result);
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(files) {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      const dataUrl = await fileToDataUrl(file);
+      pendingPhotos.push({ dataUrl, caption: '' });
+    }
+    renderPreview();
+  }
+
+  $('photo-input').addEventListener('change', e => addFiles([...e.target.files]));
+
+  const zone = $('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    addFiles([...e.dataTransfer.files]);
+  });
+
+  function renderPreview() {
+    const grid = $('photos-preview');
+    grid.innerHTML = '';
+    pendingPhotos.forEach((photo, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'photo-thumb';
+      wrap.innerHTML = `
+        <img src="${photo.dataUrl}" alt="foto ${i+1}" />
+        <button class="remove-btn" data-i="${i}">✕</button>
+        <input class="caption-input" placeholder="Pie de foto..." data-i="${i}" value="${photo.caption.replace(/"/g,'&quot;')}" />
+      `;
+      grid.appendChild(wrap);
+    });
+
+    grid.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => { pendingPhotos.splice(+btn.dataset.i, 1); renderPreview(); });
+    });
+    grid.querySelectorAll('.caption-input').forEach(inp => {
+      inp.addEventListener('input', () => { pendingPhotos[+inp.dataset.i].caption = inp.value; });
+    });
+  }
+
+  /* ── Load today's existing entry ── */
+  function loadTodayEntry() {
+    const entries = getEntries();
+    const entry = entries[todayKey()];
+    if (!entry) return;
+    $('mood-input').value = entry.mood || '';
+    selectedEmoji = entry.emoji || '';
+    if (selectedEmoji) {
+      document.querySelectorAll('.emoji-btn').forEach(b => {
+        if (b.dataset.emoji === selectedEmoji) b.classList.add('selected');
+      });
+    }
+    pendingPhotos = entry.photos ? [...entry.photos] : [];
+    renderPreview();
+  }
+  loadTodayEntry();
+
+  /* ── Save ── */
+  $('save-btn').addEventListener('click', () => {
+    const entries = getEntries();
+    entries[todayKey()] = {
+      mood: $('mood-input').value.trim(),
+      emoji: selectedEmoji,
+      photos: [...pendingPhotos],
+      savedAt: new Date().toISOString()
+    };
+    saveEntries(entries);
+    showToast('✅ Entrada guardada');
+  });
+
+  /* ── History ── */
+  function renderHistory(filter = '') {
+    const entries = getEntries();
+    const keys = Object.keys(entries).sort((a, b) => b.localeCompare(a));
+    const list = $('history-list');
+
+    // Stats
+    const strip = $('stats-strip');
+    const totalPhotos = keys.reduce((n, k) => n + (entries[k].photos?.length || 0), 0);
+    strip.innerHTML = `
+      <div class="stat-pill">Días: <strong>${keys.length}</strong></div>
+      <div class="stat-pill">Fotos: <strong>${totalPhotos}</strong></div>
+    `;
+
+    const q = filter.toLowerCase();
+    const filtered = keys.filter(k => {
+      if (!q) return true;
+      const e = entries[k];
+      return (e.mood || '').toLowerCase().includes(q) ||
+             (e.emoji || '').includes(q) ||
+             (e.photos || []).some(p => (p.caption || '').toLowerCase().includes(q)) ||
+             formatDate(k).toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="history-empty"><div class="big-icon">${filter ? '🔍' : '📭'}</div>${filter ? 'Sin resultados' : 'Aún no hay entradas.<br>¡Escribe tu primer día!'}</div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    filtered.forEach(key => {
+      const entry = entries[key];
+      const card = document.createElement('div');
+      card.className = 'entry-card';
+
+      const photosHtml = (entry.photos || []).map((p, i) => `
+        <div class="entry-photo-wrap" data-key="${key}" data-i="${i}">
+          <img src="${p.dataUrl}" alt="foto" loading="lazy" />
+          ${p.caption ? `<div class="entry-photo-caption">${escHtml(p.caption)}</div>` : ''}
+        </div>
+      `).join('');
+
+      card.innerHTML = `
+        <div class="entry-header">
+          <div>
+            <div class="entry-date">${formatDate(key)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${entry.emoji ? `<span class="entry-emoji">${entry.emoji}</span>` : ''}
+            <button class="entry-delete" data-key="${key}">Borrar</button>
+          </div>
+        </div>
+        ${entry.mood ? `<div class="entry-mood">${escHtml(entry.mood)}</div>` : ''}
+        ${photosHtml ? `<div class="entry-photos">${photosHtml}</div>` : ''}
+      `;
+      list.appendChild(card);
+    });
+
+    // Delete buttons
+    list.querySelectorAll('.entry-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!confirm('¿Borrar esta entrada?')) return;
+        const entries = getEntries();
+        delete entries[btn.dataset.key];
+        saveEntries(entries);
+        renderHistory($('search-input').value);
+        showToast('🗑️ Entrada borrada');
+      });
+    });
+
+    // Lightbox
+    list.querySelectorAll('.entry-photo-wrap').forEach(wrap => {
+      wrap.addEventListener('click', () => {
+        const entry = getEntries()[wrap.dataset.key];
+        const photo = entry.photos[+wrap.dataset.i];
+        $('lightbox-img').src = photo.dataUrl;
+        $('lightbox-caption').textContent = photo.caption || '';
+        $('lightbox').classList.add('open');
+      });
+    });
+  }
+
+  $('search-input').addEventListener('input', e => renderHistory(e.target.value));
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Lightbox ── */
+  $('lightbox-close').addEventListener('click', () => $('lightbox').classList.remove('open'));
+  $('lightbox').addEventListener('click', e => { if (e.target === $('lightbox')) $('lightbox').classList.remove('open'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('lightbox').classList.remove('open'); });
+</script>
+</body>
+</html>
